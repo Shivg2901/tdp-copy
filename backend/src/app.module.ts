@@ -7,6 +7,8 @@ import type { Neo4jScheme } from './interfaces/neo4j-config.interface';
 import { AlgorithmModule } from './algorithm/algorithm.module';
 import { RedisModule } from './redis/redis.module';
 import { RedisService } from './redis/redis.service';
+import { FeedbackModule } from './feedback/feedback.module';
+import { ClickhouseModule } from './clickhouse/clickhouse.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { RedisService } from './redis/redis.service';
       global: true,
       exports: [RedisService],
     },
+    FeedbackModule,
+    ClickhouseModule,
   ],
   controllers: [AppController],
 })
