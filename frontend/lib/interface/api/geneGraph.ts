@@ -23,7 +23,7 @@ export interface GeneGraphVariables {
   /**
    * Various Interaction Type like BIKG, PPI, FUN_PPI etc
    */
-  interactionType: string;
+  interactionType: string[];
 }
 
 /**
@@ -58,6 +58,7 @@ export interface GeneGraphData {
        * Combined score of the interaction
        */
       score: number;
+      typeScores?: Record<string, number | null>;
     }[];
 
     /**

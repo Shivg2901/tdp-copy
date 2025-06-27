@@ -33,6 +33,7 @@ type GeneInteraction {
   gene1: String!
   gene2: String!
   score: Float!
+  typeScores: JSON
 }
 
 type GeneInteractionOutput {
@@ -49,7 +50,7 @@ type Header {
 input InteractionInput {
   geneIDs: [String!]!
   graphName: String
-  interactionType: String!
+  interactionType: [String!]!
   minScore: Float!
 }
 
@@ -62,4 +63,9 @@ type Query {
   genes(config: [DataRequired!], geneIDs: [String!]!): [Gene!]!
   getGeneInteractions(input: InteractionInput!, order: Int!): GeneInteractionOutput!
   headers(disease: String!): Header!
+  topGenesByDisease(diseaseId: String!, limit: Int! = 25): [TopGene!]!
+}
+
+type TopGene {
+  gene_name: String!
 }

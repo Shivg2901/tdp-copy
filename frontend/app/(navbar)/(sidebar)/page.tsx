@@ -16,13 +16,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MultiSelect } from '@/components/ui/multiselect';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { graphConfig } from '@/lib/data';
-import { GENE_VERIFICATION_QUERY } from '@/lib/gql';
+import { GENE_VERIFICATION_QUERY, TOP_GENES_QUERY } from '@/lib/gql';
 import type { GeneVerificationData, GeneVerificationVariables, GetDiseaseData, GraphConfigForm } from '@/lib/interface';
 import { distinct, envURL } from '@/lib/utils';
 import { useLazyQuery } from '@apollo/client';
@@ -36,6 +37,8 @@ export default function Home() {
   );
   const [diseaseData, setDiseaseData] = React.useState<GetDiseaseData | undefined>(undefined);
 
+  const [fetchTopGenes, { data: topGenesData, loading: topGenesLoading }] = useLazyQuery(TOP_GENES_QUERY);
+
   React.useEffect(() => {
     (async () => {
       const response = await fetch(`${envURL(process.env.NEXT_PUBLIC_BACKEND_URL)}/diseases`);
@@ -48,7 +51,7 @@ export default function Home() {
     seedGenes: 'MAPT, STX6, EIF2AK3, MOBP, DCTN1, LRRK2',
     diseaseMap: 'MONDO_0004976',
     order: '0',
-    interactionType: 'PPI',
+    interactionType: ['PPI'],
     minScore: '0.9',
   });
 
@@ -84,13 +87,12 @@ export default function Home() {
     const num = Number.parseInt(fd.get('autofill-num') as string, 10);
     setAutofillLoading(true);
     try {
-      const res = await fetch(
-        `${envURL(process.env.NEXT_PUBLIC_BACKEND_URL)}/api/clickhouse/top-genes?diseaseId=${encodeURIComponent(
-          formData.diseaseMap,
-        )}&limit=${num}`,
-      );
-      const genes: string[] = await res.json();
-      setFormData(f => ({ ...f, seedGenes: genes.join(', ') }));
+      await fetchTopGenes({
+        variables: {
+          diseaseId: formData.diseaseMap,
+          limit: num,
+        },
+      });
     } catch {
       toast.error('Failed to autofill genes from API', {
         cancel: { label: 'Close', onClick() {} },
@@ -99,6 +101,14 @@ export default function Home() {
       setAutofillLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (topGenesData?.topGenesByDisease) {
+      const genes: string[] = topGenesData.topGenesByDisease.map((g: { gene_name: string }) => g.gene_name);
+      setFormData(f => ({ ...f, seedGenes: genes.join(', ') }));
+      setAutofillLoading(false);
+    }
+  }, [topGenesData]);
 
   const handleSubmit = async () => {
     const { seedGenes } = formData;
@@ -120,6 +130,9 @@ export default function Home() {
 
   const handleSelect = (val: string, key: string) => {
     setFormData({ ...formData, [key]: val });
+  };
+  const handleMultiSelect = (vals: string[], key: string) => {
+    setFormData({ ...formData, [key]: vals });
   };
 
   const handleFileRead = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -253,18 +266,18 @@ export default function Home() {
                     className='w-20 h-8'
                     placeholder='e.g. 25'
                     defaultValue={25}
-                    disabled={autofillLoading}
+                    disabled={autofillLoading || topGenesLoading}
                   />
                   <Button
                     type='submit'
-                    disabled={autofillLoading}
+                    disabled={autofillLoading || topGenesLoading}
                     className='ml-2 h-8'
                     style={{
                       background:
                         'linear-gradient(45deg, rgba(18,76,103,1) 0%, rgba(9,114,121,1) 35%, rgba(0,0,0,1) 100%)',
                     }}
                   >
-                    {autofillLoading ? (
+                    {autofillLoading || topGenesLoading ? (
                       <>
                         <Loader className='animate-spin mr-2' size={16} />
                         Autofilling...
@@ -380,18 +393,27 @@ FIG4`,
                       <TooltipContent>{config.tooltipContent}</TooltipContent>
                     </Tooltip>
                   </div>
-                  <Select required value={formData[config.id]} onValueChange={val => handleSelect(val, config.id)}>
-                    <SelectTrigger id={config.id}>
-                      <SelectValue placeholder='Select...' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {config.options.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {config.id === 'interactionType' ? (
+                    <MultiSelect
+                      options={[...config.options]}
+                      selectedValues={formData[config.id] || []}
+                      onChange={values => handleMultiSelect(values, config.id)}
+                      placeholder='Select...'
+                    />
+                  ) : (
+                    <Select required value={formData[config.id]} onValueChange={val => handleSelect(val, config.id)}>
+                      <SelectTrigger id={config.id}>
+                        <SelectValue placeholder='Select...' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {config.options.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               ))}
             </div>

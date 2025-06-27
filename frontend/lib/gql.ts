@@ -14,7 +14,7 @@ export const GENE_VERIFICATION_QUERY = gql`
 `;
 
 export const GENE_GRAPH_QUERY = gql`
-  query GeneGraph($geneIDs: [String!]!, $minScore: Float!, $order: Int!, $interactionType: String!) {
+  query GeneGraph($geneIDs: [String!]!, $minScore: Float!, $order: Int!, $interactionType: [String!]!) {
     getGeneInteractions(
       input: { geneIDs: $geneIDs, minScore: $minScore, interactionType: $interactionType }
       order: $order
@@ -28,6 +28,7 @@ export const GENE_GRAPH_QUERY = gql`
         gene1
         gene2
         score
+        typeScores
       }
       graphName
     }
@@ -67,6 +68,14 @@ export const GET_HEADERS_QUERY = (bringCommon = true) => gql`
         name
         description
       }
+    }
+  }
+`;
+
+export const TOP_GENES_QUERY = gql`
+  query TopGenesByDisease($diseaseId: String!, $limit: Int!) {
+    topGenesByDisease(diseaseId: $diseaseId, limit: $limit) {
+      gene_name
     }
   }
 `;
